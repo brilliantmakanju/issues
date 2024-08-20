@@ -10,7 +10,7 @@ jobs:
 
     steps:
     - name: Set up jq
-      run: sudo apt-get install jq
+      run: sudo apt-get install -y jq
 
     - name: Robots
       env:
@@ -19,26 +19,26 @@ jobs:
         # Extract the issue number and repository name from the event payload
         ISSUE_NUMBER=$(jq --raw-output .issue.number $GITHUB_EVENT_PATH)
         REPO_NAME=$(jq --raw-output .repository.name $GITHUB_EVENT_PATH)
-        
+
         # Fetch the issue details
         ISSUE_DETAILS=$(curl -s -H "Authorization: token $GH_TOKEN" \
             "https://api.github.com/repos/${GITHUB_REPOSITORY}/issues/${ISSUE_NUMBER}")
-        
-        # Check if jq is properly installed and available
-        if ! command -v jq &> /dev/null; then
-            echo "jq command could not be found"
-            exit 1
-        fi
+
+        # Extract the issue body
+        ISSUE_BODY=$(echo "$ISSUE_DETAILS" | jq --raw-output '.body')
+
+        # Debug output to verify the body
+        echo "Original Issue Body: $ISSUE_BODY"
 
         # Replace the owner's email with the repository name
-        MODIFIED_BODY=$(echo "$ISSUE_DETAILS" | jq --arg repo "$REPO_NAME" \
-            '.body |= sub("owner@example.com"; $repo)')
+        MODIFIED_BODY=$(echo "$ISSUE_BODY" | jq --arg repo "$REPO_NAME" \
+            'sub("owner@example.com"; $repo)')
 
-        # Check the output of the modified body
-        echo "Modified issue body: $MODIFIED_BODY"
+        # Debug output to verify the modified body
+        echo "Modified Issue Body: $MODIFIED_BODY"
 
         # Update the issue with the modified body
         curl -s -X PATCH -H "Authorization: token $GH_TOKEN" \
             -H "Accept: application/vnd.github.v3+json" \
-            -d "{\"body\": $(echo "$MODIFIED_BODY" | jq -c '.body')}" \
+            -d "{\"body\": \"$MODIFIED_BODY\"}" \
             "https://api.github.com/repos/${GITHUB_REPOSITORY}/issues/${ISSUE_NUMBER}"
