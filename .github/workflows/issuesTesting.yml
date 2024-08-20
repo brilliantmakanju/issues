@@ -53,8 +53,11 @@ jobs:
 
         echo "Original Issue Body: $ISSUE_BODY"
 
+        # Escape the body text for safe JSON processing
+        ESCAPED_BODY=$(printf '%s' "$ISSUE_BODY" | jq -R .)
+
         # Replace the owner's email with the repository name
-        MODIFIED_BODY=$(echo "$ISSUE_BODY" | jq --arg repo "$REPO_NAME" \
+        MODIFIED_BODY=$(echo "$ESCAPED_BODY" | jq --arg repo "$REPO_NAME" \
             'sub("owner@example.com"; $repo)')
 
         # Debug output to verify the modified body
@@ -63,7 +66,7 @@ jobs:
         # Update the issue with the modified body
         curl -s -X PATCH -H "Authorization: token $GH_TOKEN" \
             -H "Accept: application/vnd.github.v3+json" \
-            -d "{\"body\": \"$MODIFIED_BODY\"}" \
+            -d "{\"body\": $(echo "$MODIFIED_BODY" | jq -c '.')} " \
             "https://api.github.com/repos/${GITHUB_REPOSITORY}/issues/${ISSUE_NUMBER}"
 
         # Check if curl command for update succeeded
@@ -71,4 +74,3 @@ jobs:
           echo "Failed to update issue"
           exit 1
         fi
-
