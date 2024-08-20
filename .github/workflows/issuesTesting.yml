@@ -1,4 +1,4 @@
-name: issuesTesting
+name: issues
 
 on:
   issues:
@@ -12,7 +12,7 @@ jobs:
     - name: Checkout code
       uses: actions/checkout@v3
 
-    - name: Replace owner's email with project name
+    - name: issues
       env:
         GH_TOKEN: ${{ secrets.GH_TOKEN }}
       run: |
