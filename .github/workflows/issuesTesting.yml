@@ -16,18 +16,41 @@ jobs:
       env:
         GH_TOKEN: ${{ secrets.GH_TOKEN }}
       run: |
+        # Ensure jq is installed and available
+        if ! command -v jq &> /dev/null; then
+          echo "jq command could not be found"
+          exit 1
+        fi
+
         # Extract the issue number and repository name from the event payload
         ISSUE_NUMBER=$(jq --raw-output .issue.number $GITHUB_EVENT_PATH)
         REPO_NAME=$(jq --raw-output .repository.name $GITHUB_EVENT_PATH)
+
+        echo "Issue Number: $ISSUE_NUMBER"
+        echo "Repository Name: $REPO_NAME"
 
         # Fetch the issue details
         ISSUE_DETAILS=$(curl -s -H "Authorization: token $GH_TOKEN" \
             "https://api.github.com/repos/${GITHUB_REPOSITORY}/issues/${ISSUE_NUMBER}")
 
+        # Check if curl command succeeded
+        if [ $? -ne 0 ]; then
+          echo "Failed to fetch issue details"
+          exit 1
+        fi
+
+        # Debug output to check the raw issue details
+        echo "Issue Details: $ISSUE_DETAILS"
+
         # Extract the issue body
         ISSUE_BODY=$(echo "$ISSUE_DETAILS" | jq --raw-output '.body')
 
-        # Debug output to verify the body
+        # Check if jq command for body extraction succeeded
+        if [ $? -ne 0 ]; then
+          echo "Failed to extract issue body"
+          exit 1
+        fi
+
         echo "Original Issue Body: $ISSUE_BODY"
 
         # Replace the owner's email with the repository name
@@ -42,3 +65,10 @@ jobs:
             -H "Accept: application/vnd.github.v3+json" \
             -d "{\"body\": \"$MODIFIED_BODY\"}" \
             "https://api.github.com/repos/${GITHUB_REPOSITORY}/issues/${ISSUE_NUMBER}"
+
+        # Check if curl command for update succeeded
+        if [ $? -ne 0 ]; then
+          echo "Failed to update issue"
+          exit 1
+        fi
+
