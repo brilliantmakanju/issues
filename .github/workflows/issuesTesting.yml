@@ -1,0 +1,34 @@
+name: issuesTesting
+
+on:
+  issues:
+    types: [opened]
+
+jobs:
+  replace-email:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v3
+
+    - name: Replace owner's email with project name
+      env:
+        GH_TOKEN: ${{ secrets.GH_TOKEN }}
+      run: |
+        ISSUE_NUMBER=$(jq --raw-output .issue.number $GITHUB_EVENT_PATH)
+        REPO_NAME=$(jq --raw-output .repository.name $GITHUB_EVENT_PATH)
+        
+        # Fetch the issue details
+        ISSUE_DETAILS=$(curl -s -H "Authorization: token $GH_TOKEN" \
+            "https://api.github.com/repos/${GITHUB_REPOSITORY}/issues/${ISSUE_NUMBER}")
+        
+        # Replace the owner's email with project name
+        MODIFIED_BODY=$(echo "$ISSUE_DETAILS" | jq --arg repo "$REPO_NAME" \
+            '.body |= sub("owner@example.com"; $repo)')
+        
+        # Update the issue with the modified body
+        curl -s -X PATCH -H "Authorization: token $GH_TOKEN" \
+            -H "Accept: application/vnd.github.v3+json" \
+            -d "$(echo "$MODIFIED_BODY" | jq '{body: .body}')" \
+            "https://api.github.com/repos/${GITHUB_REPOSITORY}/issues/${ISSUE_NUMBER}"
